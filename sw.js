@@ -1,5 +1,5 @@
 /* Guarda la app en el teléfono para que abra sin internet. */
-const CACHE = "vida-productiva-v8";
+const CACHE = "vida-productiva-v9";
 const BASE = [
   "./",
   "./index.html",
@@ -11,7 +11,13 @@ const BASE = [
 
 self.addEventListener("install", (ev) => {
   ev.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      // cache:"reload" salta la caché HTTP del navegador. Sin esto addAll guarda
+      // en el caché nuevo los archivos viejos que el navegador aún tiene frescos:
+      // el nombre del caché sube de versión pero el contenido se queda atrás, y
+      // el cambio no aparece nunca. GitHub Pages sirve todo con max-age=600.
+      .then((c) => c.addAll(BASE.map((u) => new Request(u, {cache: "reload"}))))
+      .then(() => self.skipWaiting())
   );
 });
 

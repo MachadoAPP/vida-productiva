@@ -78,6 +78,13 @@ no la vuelvas genérica.
 - **Todas las rutas son relativas** (`./index.html`, `register("sw.js")`, `scope: "./"`).
   Tienen que seguir así: Pages sirve la app en un subdirectorio, y una ruta que
   empiece por `/` apuntaría a la raíz del dominio y rompería todo.
+- **El `addAll()` del service worker descarga con `cache: "reload"`.** No se lo
+  quites. Sin eso `addAll` pasa por la caché HTTP del navegador y guarda en el
+  caché nuevo los archivos viejos que siguen frescos: el caché sube de versión y
+  el contenido se queda atrás, así que el cambio no aparece nunca. Pasó de verdad,
+  y cuesta verlo porque todo parece correcto — el caché se llama v8 y por dentro
+  tiene el index.html de v7. `updateViaCache` no cubre esto: solo protege al
+  `sw.js`, no a lo que él descarga.
 - **Al cambiar `index.html`, subir la versión de `CACHE` en `sw.js`**
   (`vida-productiva-v1` → `v2`, etc). Si no, el celular sigue mostrando la versión
   vieja cacheada y parece que el cambio no se aplicó. Este es el error más común.
