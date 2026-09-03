@@ -5,6 +5,8 @@ la app te dice cuántas horas te sobraron.
 
 ![Ícono](icon-192.png)
 
+La app está en **https://machadoapp.github.io/vida-productiva/**
+
 ## Probarlo en el computador
 
 ```bash
@@ -19,43 +21,36 @@ es parte de la app: si publicas la carpeta en cualquier lado, ese archivo sobra.
 
 ## En el celular
 
-Ya está instalada, por USB, sin publicar nada en internet. Funciona así: `adb`
-redirige el puerto 8000 del celular al del computador, entonces el celular ve la
-app en `http://localhost:8000`. Chrome trata `localhost` como sitio seguro
-aunque sea `http`, y por eso deja instalarla y activar el modo sin internet.
+Está publicada en **https://machadoapp.github.io/vida-productiva/** y ya instalada
+como app. Se abre a pantalla completa, sin barra de direcciones, y funciona sin
+internet: el service worker guarda todo en el teléfono.
 
-Una vez instalada **ya no necesita el computador**: el service worker guardó todo
-y la app abre sola, desconectada.
+Publicar solo expone **los archivos**. Tus registros no viajan a ninguna parte —
+viven en el `localStorage` del teléfono. Si alguien abre esa URL ve la app en
+blanco, con sus propios datos.
+
+Para instalarla en otro teléfono: abre la URL en Chrome → menú → Instalar y crear
+acceso directo → **Instalar** (no "Crear acceso directo", que solo abre Chrome).
+En iPhone es Safari → compartir → Añadir a pantalla de inicio.
 
 ### Actualizarla después de un cambio
 
 1. Sube la versión de `CACHE` en `sw.js`. Sin esto el celular sigue mostrando
-   lo viejo y parece que el cambio no sirvió.
-2. Conecta el celular por USB y ejecuta:
-
-   ```bash
-   celular.cmd
-   ```
-
-   Redirige el puerto y arranca el servidor.
+   lo viejo y parece que el cambio no sirvió. Es el error más común.
+2. `git push`. GitHub Pages reconstruye solo, en un minuto o dos.
 3. Abre la app en el celular **dos veces**. La primera descarga el service worker
-   nuevo; la segunda ya muestra la versión nueva. Es así por diseño: la app abre
-   desde el caché para que funcione sin internet.
+   nuevo; la segunda ya muestra el cambio. Es así por diseño: la app abre desde el
+   caché para que funcione sin internet.
 
-Si algún día quieres soltarla del computador del todo, súbela a GitHub Pages
-(gratis, sirviendo la raíz del repo). Sigue siendo local: el sitio solo entrega
-los archivos y tus datos nunca salen del teléfono. La ventaja es que se instala y
-se actualiza sin cable, y no depende de que el caché sobreviva.
-
-En iPhone tendría que ser por Safari → compartir → Añadir a pantalla de inicio, y
-ahí sí hace falta `https`: el truco del cable no aplica.
+Ya no hace falta el cable. `celular.cmd` sigue ahí por si quieres probar algo en
+el celular sin publicarlo todavía: redirige el puerto 8000 por USB y el teléfono
+ve la app en `http://localhost:8000`, que para Chrome cuenta como sitio seguro.
 
 ## Tus datos
 
 Se quedan en el navegador del teléfono. No viajan a ningún servidor y nadie más
-los ve. Pero si borras los datos de navegación de Chrome, desaparecen — y como la
-app está instalada desde `localhost`, no habría de dónde volver a bajarla sin
-conectar el cable otra vez.
+los ve. Pero si borras los datos de navegación de Chrome, desaparecen. La app la
+puedes reinstalar desde la URL, pero el historial no vuelve.
 
 Por eso están los botones **Descargar copia** y **Restaurar copia** abajo de la
 pantalla. Baja una copia de vez en cuando, y siempre antes de cambiar de teléfono.
@@ -68,8 +63,8 @@ pantalla. Baja una copia de vez en cuando, y siempre antes de cambiar de teléfo
 lo que queda en claro son tus **horas libres**: el hueco donde de verdad cabe algo
 nuevo. Los huecos se ven en su hora, así que sabes si tienes la tarde o la noche.
 
-**Los hábitos.** Vienen siete: comidas sanas, ejercicio, leer, meditar, aprender
-algo nuevo, agua y dormir. Los que duran se anotan con hora de inicio y fin —
+**Los hábitos.** Vienen nueve: desayuno, almuerzo y cena sanos, ejercicio, leer,
+meditar, aprender algo nuevo, agua y dormir. Los que duran se anotan con hora de inicio y fin —
 "leí de 7:30 a 9:00"— y puedes poner varios bloques al día. Los que no duran, como
 el agua, siguen con un botón de Marcar.
 

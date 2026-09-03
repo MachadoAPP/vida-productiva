@@ -20,18 +20,24 @@ En el equipo de Sebastián no hay Python, solo el atajo del Microsoft Store, as�
 que `python3 -m http.server` no sirve. `servidor.js` es Node puro sin
 dependencias y solo existe para probar: no se despliega con la app.
 
-No está publicada en ningún lado. En el celular quedó instalada como PWA desde
-`http://localhost:8000`, con `adb reverse tcp:8000 tcp:8000` redirigiendo el
-puerto por USB. Chrome trata `localhost` como contexto seguro aunque sea `http`,
-así que instala la app y activa el service worker; después funciona desconectada,
-sirviendo todo desde el caché.
+Publicada en GitHub Pages desde la raíz de `main`:
+**https://machadoapp.github.io/vida-productiva/** — repositorio
+`MachadoAPP/vida-productiva`, público porque Pages gratis no sirve repos privados.
+Solo se expone el código; los datos siguen en el `localStorage` del teléfono.
 
-Para actualizar el celular: subir `CACHE` en `sw.js`, correr `celular.cmd` con el
-cable puesto, y abrir la app **dos veces** (la primera descarga el service worker
-nuevo, la segunda ya muestra el cambio).
+Para actualizar el celular: subir `CACHE` en `sw.js`, `git push`, y abrir la app
+**dos veces** (la primera descarga el service worker nuevo, la segunda ya muestra
+el cambio).
 
-Si algún día hace falta soltarla del cable, GitHub Pages sirviendo la raíz del
-repo. Los datos siguen siendo locales de todos modos.
+`celular.cmd` sigue sirviendo para probar en el celular sin publicar: hace
+`adb reverse tcp:8000 tcp:8000` y el teléfono ve la app en `http://localhost:8000`,
+que Chrome trata como contexto seguro aunque sea `http`. Ojo: instalarla desde
+`localhost` y desde Pages son **orígenes distintos**, con almacenamiento separado.
+
+Otro detalle del origen: `localStorage` se comparte por dominio, no por carpeta.
+Si algún día publicas otro proyecto en `machadoapp.github.io`, comparte espacio
+con este. La clave `vida-productiva-v1` es específica y no debería chocar, pero
+no la vuelvas genérica.
 
 ## Archivos
 
@@ -53,12 +59,16 @@ repo. Los datos siguen siendo locales de todos modos.
   No hay backend y no se debe agregar uno. La clave nunca ha cambiado: los campos
   nuevos (`paginas`, `libro`, `libros`) llegan vacíos si no estaban, y `migrar()`
   convierte al vuelo lo que quedó del formato viejo (`opciones` → `minimo` y
-  `objetivo`, y un número suelto → `[{m:n}]`). La migración conserva los puntajes
+  `objetivo`, un número suelto → `[{m:n}]`, y "Comidas sanas" partido en desayuno,
+  almuerzo y cena repartiendo los puntos y heredando las marcas). La migración conserva los puntajes
   exactos, así que el historial no cambia de valor. Si vuelves a tocar el formato,
   amplía `migrar()`; no cambies la clave.
 - **No funciona abierta con `file://`.** Chrome en Android bloquea `localStorage`
-  en archivos locales y los service workers exigen `https`. Siempre probar con un
-  servidor.
+  en archivos locales y los service workers exigen `https` (o `localhost`). Siempre
+  probar con un servidor.
+- **Todas las rutas son relativas** (`./index.html`, `register("sw.js")`, `scope: "./"`).
+  Tienen que seguir así: Pages sirve la app en un subdirectorio, y una ruta que
+  empiece por `/` apuntaría a la raíz del dominio y rompería todo.
 - **Al cambiar `index.html`, subir la versión de `CACHE` en `sw.js`**
   (`vida-productiva-v1` → `v2`, etc). Si no, el celular sigue mostrando la versión
   vieja cacheada y parece que el cambio no se aplicó. Este es el error más común.
@@ -67,7 +77,7 @@ repo. Los datos siguen siendo locales de todos modos.
 
 ## Lógica de puntaje
 
-Cada hábito tiene `puntos`, que definen cuánto pesa en el porcentaje. Los siete
+Cada hábito tiene `puntos`, que definen cuánto pesa en el porcentaje. Los nueve
 hábitos por defecto suman 100, así que el porcentaje coincide con los puntos,
 pero eso es casualidad y el código no lo asume: siempre divide entre el total
 real. Si agregas o borras hábitos desde "Editar hábitos" el total cambia y el

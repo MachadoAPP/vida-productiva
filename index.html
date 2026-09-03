@@ -240,7 +240,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 var CLAVE = "vida-productiva-v1";
 
 var HABITOS_INICIALES = [
-  {id:"h1", icono:"🥗", nombre:"Comidas sanas", tipo:"check", puntos:15},
+  {id:"h1", icono:"🍳", nombre:"Desayuno sano", tipo:"check", puntos:5},
+  {id:"h1b", icono:"🥗", nombre:"Almuerzo sano", tipo:"check", puntos:5},
+  {id:"h1c", icono:"🍲", nombre:"Cena sana", tipo:"check", puntos:5},
   {id:"h2", icono:"🏃", nombre:"Ejercicio", tipo:"tiempo", puntos:20, minimo:15, objetivo:30},
   {id:"h3", icono:"📚", nombre:"Leer", tipo:"tiempo", puntos:15, minimo:15, objetivo:30},
   {id:"h4", icono:"🧘", nombre:"Meditar", tipo:"tiempo", puntos:10, minimo:5, objetivo:20},
@@ -249,7 +251,7 @@ var HABITOS_INICIALES = [
   {id:"h7", icono:"😴", nombre:"Dormir", tipo:"tiempo", puntos:15, minimo:360, objetivo:420}
 ];
 
-var EMOJIS = ["🥗","🏃","📚","🧘","🧠","💧","😴","💻","🎸","🚭","☀️","🧹","💰","🗣️","🚴","✍️","🙏","🎨","🧊","📵","⭐"];
+var EMOJIS = ["🍳","🥗","🍲","🏃","📚","🧘","🧠","💧","😴","💻","🎸","🚭","☀️","🧹","💰","🗣️","🚴","✍️","🙏","🎨","🧊","📵","⭐"];
 var DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
@@ -299,6 +301,31 @@ function migrar(){
       if(typeof reg[id] === "number"){ reg[id] = [{m: reg[id]}]; tocado = true; }
     }
   }
+
+  // "Comidas sanas" se partió en desayuno, almuerzo y cena. Reparte los puntos y
+  // hereda las marcas, así que un día que estaba completo sigue valiendo igual.
+  // Solo corre si el hábito está tal cual salió de fábrica: si lo renombraste, es
+  // tuyo y no se toca.
+  var i = -1;
+  for(var j = 0; j < estado.habitos.length; j++){
+    if(estado.habitos[j].id === "h1" && estado.habitos[j].nombre === "Comidas sanas") i = j;
+  }
+  if(i !== -1){
+    var pts = Math.round((Number(estado.habitos[i].puntos) || 15) / 3);
+    estado.habitos.splice(i, 1,
+      {id:"h1",  icono:"🍳", nombre:"Desayuno sano", tipo:"check", puntos:pts},
+      {id:"h1b", icono:"🥗", nombre:"Almuerzo sano", tipo:"check", puntos:pts},
+      {id:"h1c", icono:"🍲", nombre:"Cena sana",     tipo:"check", puntos:pts}
+    );
+    for(var dia2 in estado.registro){
+      if(estado.registro[dia2].h1 === true){
+        estado.registro[dia2].h1b = true;
+        estado.registro[dia2].h1c = true;
+      }
+    }
+    tocado = true;
+  }
+
   return tocado;
 }
 
