@@ -67,8 +67,9 @@ no la vuelvas genérica.
   No hay backend y no se debe agregar uno. La clave nunca ha cambiado: los campos
   nuevos (`paginas`, `libro`, `libros`) llegan vacíos si no estaban, y `migrar()`
   convierte al vuelo lo que quedó del formato viejo (`opciones` → `minimo` y
-  `objetivo`, un número suelto → `[{m:n}]`, y "Comidas sanas" partido en desayuno,
-  almuerzo y cena repartiendo los puntos y heredando las marcas). La migración conserva los puntajes
+  `objetivo`, un número suelto → `[{m:n}]`, y la comida convertida en hábito de
+  `partes`, tanto desde el check único como desde el intento intermedio en que
+  fueron tres hábitos sueltos; los dos caminos conservan los puntos de cada día). La migración conserva los puntajes
   exactos, así que el historial no cambia de valor. Si vuelves a tocar el formato,
   amplía `migrar()`; no cambies la clave.
 - **No funciona abierta con `file://`.** Chrome en Android bloquea `localStorage`
@@ -85,20 +86,29 @@ no la vuelvas genérica.
 
 ## Lógica de puntaje
 
-Cada hábito tiene `puntos`, que definen cuánto pesa en el porcentaje. Los nueve
+Cada hábito tiene `puntos`, que definen cuánto pesa en el porcentaje. Los siete
 hábitos por defecto suman 100, así que el porcentaje coincide con los puntos,
 pero eso es casualidad y el código no lo asume: siempre divide entre el total
 real. Si agregas o borras hábitos desde "Editar hábitos" el total cambia y el
 porcentaje se sigue calculando bien.
 
-Dos tipos de hábito, y la diferencia es si la actividad dura o no:
+Tres tipos de hábito. Lo que los separa es si la actividad dura, y si se cumple
+de una sola vez o a pedazos:
 
-- `check` — o lo hiciste o no, sin duración (agua, comidas). Da todos sus puntos
-  o ninguno, y solo vale `valor === true`.
+- `check` — o lo hiciste o no, sin duración (el agua). Da todos sus puntos o
+  ninguno, y solo vale `valor === true`.
+- `partes` — varias marcas dentro de un mismo hábito, en `partes` (la comida:
+  desayuno, almuerzo, cena). Los puntos se reparten en partes iguales, así que
+  marcarlas todas da justo los puntos del hábito, sin sobras por redondeo. El
+  registro guarda los índices marcados: `{h1: [0, 2]}` es desayuno y cena.
 - `tiempo` — se registra con bloques de hora. Tiene `minimo` y `objetivo` en
   minutos. Al llegar al mínimo ganas la mitad de los puntos, al objetivo los ganas
   todos, y en medio se reparten linealmente. Por debajo del mínimo reparte desde
   cero, para que quince minutos sueltos también sumen algo.
+
+Ojo con `partes` y `tiempo`: los dos guardan un arreglo en el registro. Nada que
+recorra el registro debe decidir por `Array.isArray`; hay que mirar `h.tipo`.
+`minutosUsados()` tuvo ese error y contaba las partes como si fueran bloques.
 
 Las pastillas de 15/20/30 minutos ya no existen: un hábito con duración se anota
 con hora de inicio y fin, y de ahí salen los minutos.

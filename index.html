@@ -63,6 +63,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .pastilla{font:inherit;font-size:13px;font-weight:600;padding:9px 12px;border-radius:999px;cursor:pointer;background:var(--blanco);color:var(--suave);border:1.5px solid var(--linea);transition:background .15s,color .15s,border-color .15s;}
 .pastilla.ancha{min-width:96px;}
 .pastilla.on{background:var(--tinta);color:var(--papel);border-color:var(--tinta);}
+.partes{display:flex;gap:6px;flex-wrap:wrap;}
 
 .dia{margin-top:22px;}
 .franja{position:relative;height:24px;border-radius:6px;background:var(--vacio);overflow:hidden;}
@@ -131,7 +132,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   #cifra{font-size:52px;}
   .fila{flex-wrap:wrap;}
   .nombre{flex-basis:calc(100% - 46px);}
-  .pastilla.ancha{margin-left:46px;}
+  .pastilla.ancha,.partes{margin-left:46px;}
   .bloques{flex-basis:100%;margin-left:0;}
   .libro-dato{margin-left:0;flex-basis:100%;}
 }
@@ -240,9 +241,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 var CLAVE = "vida-productiva-v1";
 
 var HABITOS_INICIALES = [
-  {id:"h1", icono:"🍳", nombre:"Desayuno sano", tipo:"check", puntos:5},
-  {id:"h1b", icono:"🥗", nombre:"Almuerzo sano", tipo:"check", puntos:5},
-  {id:"h1c", icono:"🍲", nombre:"Cena sana", tipo:"check", puntos:5},
+  {id:"h1", icono:"🥗", nombre:"Comida sana", tipo:"partes", puntos:15, partes:["Desayuno","Almuerzo","Cena"]},
   {id:"h2", icono:"🏃", nombre:"Ejercicio", tipo:"tiempo", puntos:20, minimo:15, objetivo:30},
   {id:"h3", icono:"📚", nombre:"Leer", tipo:"tiempo", puntos:15, minimo:15, objetivo:30},
   {id:"h4", icono:"🧘", nombre:"Meditar", tipo:"tiempo", puntos:10, minimo:5, objetivo:20},
@@ -302,27 +301,46 @@ function migrar(){
     }
   }
 
-  // "Comidas sanas" se partió en desayuno, almuerzo y cena. Reparte los puntos y
-  // hereda las marcas, así que un día que estaba completo sigue valiendo igual.
-  // Solo corre si el hábito está tal cual salió de fábrica: si lo renombraste, es
-  // tuyo y no se toca.
-  var i = -1;
-  for(var j = 0; j < estado.habitos.length; j++){
-    if(estado.habitos[j].id === "h1" && estado.habitos[j].nombre === "Comidas sanas") i = j;
+  // La comida pasó a ser un hábito de tres partes. Puede venir de dos sitios: del
+  // check único de siempre, o del intento intermedio en que fueron tres hábitos
+  // sueltos. Los dos caminos conservan los puntos que valía cada día.
+  var iUnico = -1, iDes = -1, iAlm = -1, iCen = -1;
+  estado.habitos.forEach(function(h, j){
+    if(h.id === "h1"  && h.nombre === "Comidas sanas" && h.tipo === "check") iUnico = j;
+    if(h.id === "h1"  && h.nombre === "Desayuno sano") iDes = j;
+    if(h.id === "h1b" && h.nombre === "Almuerzo sano") iAlm = j;
+    if(h.id === "h1c" && h.nombre === "Cena sana")     iCen = j;
+  });
+
+  function comida(puntos){
+    return {id:"h1", icono:"🥗", nombre:"Comida sana", tipo:"partes",
+            puntos:puntos, partes:["Desayuno","Almuerzo","Cena"]};
   }
-  if(i !== -1){
-    var pts = Math.round((Number(estado.habitos[i].puntos) || 15) / 3);
-    estado.habitos.splice(i, 1,
-      {id:"h1",  icono:"🍳", nombre:"Desayuno sano", tipo:"check", puntos:pts},
-      {id:"h1b", icono:"🥗", nombre:"Almuerzo sano", tipo:"check", puntos:pts},
-      {id:"h1c", icono:"🍲", nombre:"Cena sana",     tipo:"check", puntos:pts}
-    );
-    for(var dia2 in estado.registro){
-      if(estado.registro[dia2].h1 === true){
-        estado.registro[dia2].h1b = true;
-        estado.registro[dia2].h1c = true;
-      }
+
+  if(iUnico !== -1){
+    // Estaba marcado o no: marcado valía las tres comidas.
+    estado.habitos.splice(iUnico, 1, comida(Number(estado.habitos[iUnico].puntos) || 15));
+    for(var d1 in estado.registro){
+      if(estado.registro[d1].h1 === true) estado.registro[d1].h1 = [0,1,2];
     }
+    tocado = true;
+  }else if(iDes !== -1 && iAlm !== -1 && iCen !== -1){
+    var suma = (Number(estado.habitos[iDes].puntos) || 5)
+             + (Number(estado.habitos[iAlm].puntos) || 5)
+             + (Number(estado.habitos[iCen].puntos) || 5);
+    for(var d2 in estado.registro){
+      var r = estado.registro[d2], marcadas = [];
+      if(r.h1  === true) marcadas.push(0);
+      if(r.h1b === true) marcadas.push(1);
+      if(r.h1c === true) marcadas.push(2);
+      delete r.h1b; delete r.h1c;
+      if(marcadas.length) r.h1 = marcadas; else delete r.h1;
+    }
+    var pos = Math.min(iDes, iAlm, iCen);
+    estado.habitos = estado.habitos.filter(function(h){
+      return h.id !== "h1" && h.id !== "h1b" && h.id !== "h1c";
+    });
+    estado.habitos.splice(pos, 0, comida(suma));
     tocado = true;
   }
 
@@ -383,7 +401,9 @@ function duracion(m){
 // Todo lo registrado ese día, mezclando hábitos.
 function minutosUsados(clave){
   var reg = estado.registro[clave] || {}, t = 0;
-  for(var id in reg) if(Array.isArray(reg[id])) t += minutosDe(reg[id]);
+  estado.habitos.forEach(function(h){
+    if(h.tipo === "tiempo") t += minutosDe(reg[h.id]);
+  });
   return t;
 }
 // Solo los bloques con hora de verdad, que son los que se pueden pintar.
@@ -424,6 +444,14 @@ function hayCruces(lista){
 function puntosGanados(h, valor){
   var pts = Number(h.puntos) || 0;
   if(h.tipo === "check") return valor === true ? pts : 0;
+  // Un hábito de partes reparte sus puntos en partes iguales entre ellas, así que
+  // marcarlas todas da exactamente los puntos del hábito, sin sobras por redondeo.
+  if(h.tipo === "partes"){
+    var partes = h.partes || [];
+    if(!partes.length) return 0;
+    var marcadas = Array.isArray(valor) ? Math.min(valor.length, partes.length) : 0;
+    return Math.round(pts * marcadas / partes.length);
+  }
   var min = minutosDe(valor);
   if(!min) return 0;
   var minimo = Number(h.minimo) || 0;
@@ -529,6 +557,13 @@ function render(){
     if(h.tipo === "check"){
       var marcado = !!valor;
       control = '<button class="pastilla ancha'+(marcado?' on':'')+'" data-h="'+h.id+'" aria-pressed="'+marcado+'">'+(marcado?'✓ Hecho':'Marcar')+'</button>';
+      detalle = "";
+    }else if(h.tipo === "partes"){
+      var marcadas = Array.isArray(valor) ? valor : [];
+      control = '<div class="partes">' + (h.partes||[]).map(function(p, i){
+        var on = marcadas.indexOf(i) !== -1;
+        return '<button class="pastilla'+(on?' on':'')+'" data-h="'+h.id+'" data-parte="'+i+'" aria-pressed="'+on+'">'+(on?'✓ ':'')+escapar(p)+'</button>';
+      }).join("") + '</div>';
       detalle = "";
     }else{
       var bloques = Array.isArray(valor) ? valor : [];
@@ -699,7 +734,9 @@ function renderEditor(){
       + '<input type="text" class="nom" data-campo="nombre" value="'+escapar(h.nombre)+'" aria-label="Nombre">'
       + '<select data-campo="tipo" aria-label="Tipo">'
       + '<option value="check"'+(h.tipo==="check"?" selected":"")+'>Sí o no</option>'
+      + '<option value="partes"'+(h.tipo==="partes"?" selected":"")+'>Varias partes</option>'
       + '<option value="tiempo"'+(h.tipo==="tiempo"?" selected":"")+'>Minutos</option></select>'
+      + (h.tipo==="partes" ? '<input type="text" class="nom" data-campo="partes" value="'+escapar((h.partes||[]).join(", "))+'" aria-label="Partes">' : '')
       + (h.tipo==="tiempo" ? '<input type="number" class="corto" data-campo="minimo" min="1" value="'+(h.minimo||15)+'" aria-label="Minutos mínimos" title="minutos mínimos">'
                            + '<input type="number" class="corto" data-campo="objetivo" min="1" value="'+(h.objetivo||30)+'" aria-label="Minutos objetivo" title="minutos objetivo">' : '')
       + '<input type="number" class="corto" data-campo="puntos" min="1" max="100" value="'+h.puntos+'" aria-label="Puntos">'
@@ -707,7 +744,7 @@ function renderEditor(){
       + '</div>';
   });
   html += '<button class="anadir" id="btn-anadir">Añadir hábito</button>'
-    + '<p class="nota">Los puntos definen cuánto pesa cada hábito en el porcentaje. En los de minutos, los dos números son el mínimo y el objetivo: al llegar al mínimo ganas la mitad de los puntos y al objetivo, todos.</p>';
+    + '<p class="nota">Los puntos definen cuánto pesa cada hábito en el porcentaje. En los de minutos, los dos números son el mínimo y el objetivo: al llegar al mínimo ganas la mitad de los puntos y al objetivo, todos. En los de varias partes, los puntos se reparten en partes iguales.</p>';
   ed.innerHTML = html;
 }
 
@@ -725,8 +762,9 @@ function copiaValida(d){
 document.getElementById("lista").addEventListener("click", function(ev){
   var nuevo = ev.target.closest("[data-nuevo]");
   var quitar = ev.target.closest("[data-quitar]");
-  var marca = ev.target.closest("button[data-h]");
-  if(!nuevo && !quitar && !marca) return;
+  var parte = ev.target.closest("button[data-parte]");   // antes que marca: también lleva data-h
+  var marca = parte ? null : ev.target.closest("button[data-h]");
+  if(!nuevo && !quitar && !parte && !marca) return;
   if(!estado.registro[dia]) estado.registro[dia] = {};
   var reg = estado.registro[dia];
 
@@ -740,6 +778,13 @@ document.getElementById("lista").addEventListener("click", function(ev){
       reg[idQ].splice(Number(quitar.getAttribute("data-i")), 1);
       if(!reg[idQ].length) delete reg[idQ];
     }
+  }else if(parte){
+    var idP = parte.getAttribute("data-h"), cual = Number(parte.getAttribute("data-parte"));
+    var lista = Array.isArray(reg[idP]) ? reg[idP] : [];
+    var donde = lista.indexOf(cual);
+    if(donde === -1) lista.push(cual); else lista.splice(donde, 1);
+    lista.sort(function(a,b){ return a - b; });
+    if(lista.length) reg[idP] = lista; else delete reg[idP];
   }else{
     var idM = marca.getAttribute("data-h");
     if(reg[idM]) delete reg[idM]; else reg[idM] = true;
@@ -858,10 +903,15 @@ document.getElementById("editor").addEventListener("change", function(ev){
   if(!h) return;
   if(campo === "puntos") h.puntos = Number(ev.target.value) || 1;
   else if(campo === "minimo" || campo === "objetivo") h[campo] = Math.max(1, parseInt(ev.target.value,10) || 1);
+  else if(campo === "partes"){
+    var trozos = ev.target.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+    h.partes = trozos.length ? trozos : ["Desayuno","Almuerzo","Cena"];
+  }
   else{
     h[campo] = ev.target.value;
-    // Un hábito que pasa a medirse por tiempo necesita mínimo y objetivo.
+    // Un hábito que cambia de tipo necesita los campos de su tipo nuevo.
     if(campo === "tipo" && ev.target.value === "tiempo" && h.minimo == null){ h.minimo = 15; h.objetivo = 30; }
+    if(campo === "tipo" && ev.target.value === "partes" && !h.partes) h.partes = ["Desayuno","Almuerzo","Cena"];
   }
   guardar(); render();
 });

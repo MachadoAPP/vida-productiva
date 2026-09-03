@@ -61,8 +61,10 @@ pantalla. Baja una copia de vez en cuando, y siempre antes de cambiar de teléfo
 lo que queda en claro son tus **horas libres**: el hueco donde de verdad cabe algo
 nuevo. Los huecos se ven en su hora, así que sabes si tienes la tarde o la noche.
 
-**Los hábitos.** Vienen nueve: desayuno, almuerzo y cena sanos, ejercicio, leer,
-meditar, aprender algo nuevo, agua y dormir. Los que duran se anotan con hora de inicio y fin —
+**Los hábitos.** Vienen siete: comida sana, ejercicio, leer, meditar, aprender
+algo nuevo, agua y dormir. La comida se marca por partes —desayuno, almuerzo y
+cena, cinco puntos cada una— así que un día en que solo desayunaste bien también
+cuenta. Los que duran se anotan con hora de inicio y fin —
 "leí de 7:30 a 9:00"— y puedes poner varios bloques al día. Los que no duran, como
 el agua, siguen con un botón de Marcar.
 
@@ -78,9 +80,10 @@ según qué tan completo estuvo. Toca cualquiera para revisarlo o completarlo.
 
 ## Cómo se calcula el porcentaje
 
-Cada hábito pesa unos puntos, editables. Los de sí-o-no dan todo o nada. Los que
-se miden por tiempo tienen un mínimo y un objetivo en minutos: al llegar al mínimo
-ganas la mitad de los puntos y al objetivo, todos. El porcentaje son los puntos
+Cada hábito pesa unos puntos, editables. Los de sí-o-no dan todo o nada. Los de
+varias partes reparten sus puntos en partes iguales. Los que se miden por tiempo
+tienen un mínimo y un objetivo en minutos: al llegar al mínimo ganas la mitad de
+los puntos y al objetivo, todos. El porcentaje son los puntos
 ganados sobre el total posible.
 
 Dormir cuenta como cualquier otro bloque. Si duermes nueve horas te quedan quince
