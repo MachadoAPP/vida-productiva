@@ -935,8 +935,24 @@ render();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    // updateViaCache:"none" obliga al navegador a preguntar por sw.js saltándose su
+    // caché HTTP. Hace falta porque GitHub Pages lo sirve con max-age=600: sin esto
+    // una versión nueva puede tardar diez minutos en aparecer, y parece que el
+    // cambio no se aplicó.
+    navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}).catch(function(){});
   });
+
+  // Al entrar un service worker nuevo, recargar para mostrar la versión nueva de
+  // una vez, sin tener que abrir la app dos veces. Solo cuando ya había uno: en la
+  // primera instalación el cambio de control es normal y recargar sobraría.
+  if(navigator.serviceWorker.controller){
+    var recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(recargando) return;   // el guardia evita quedar recargando en bucle
+      recargando = true;
+      location.reload();
+    });
+  }
 }
 </script>
 </body>

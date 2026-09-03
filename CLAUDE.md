@@ -25,9 +25,17 @@ Publicada en GitHub Pages desde la raíz de `main`:
 `MachadoAPP/vida-productiva`, público porque Pages gratis no sirve repos privados.
 Solo se expone el código; los datos siguen en el `localStorage` del teléfono.
 
-Para actualizar el celular: subir `CACHE` en `sw.js`, `git push`, y abrir la app
-**dos veces** (la primera descarga el service worker nuevo, la segunda ya muestra
-el cambio).
+Para actualizar el celular: subir `CACHE` en `sw.js`, `git push`, y abrir la app.
+Se recarga sola al entrar el service worker nuevo.
+
+Dos cosas hacen que eso funcione, y las dos costaron descubrirlas:
+
+- `register("sw.js", {updateViaCache:"none"})`. GitHub Pages sirve todo con
+  `Cache-Control: max-age=600`, así que sin esto Chrome guarda el `sw.js` viejo
+  diez minutos y ni pregunta si hay uno nuevo. Parece que el cambio no se aplicó.
+- El `controllerchange` que recarga la página. Sin él la app abre desde el caché
+  viejo y hay que abrirla una segunda vez. Va con guardia contra bucles y solo si
+  ya había un service worker: en la primera instalación recargar sobra.
 
 `celular.cmd` sigue sirviendo para probar en el celular sin publicar: hace
 `adb reverse tcp:8000 tcp:8000` y el teléfono ve la app en `http://localhost:8000`,

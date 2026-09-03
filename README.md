@@ -38,9 +38,7 @@ En iPhone es Safari → compartir → Añadir a pantalla de inicio.
 1. Sube la versión de `CACHE` en `sw.js`. Sin esto el celular sigue mostrando
    lo viejo y parece que el cambio no sirvió. Es el error más común.
 2. `git push`. GitHub Pages reconstruye solo, en un minuto o dos.
-3. Abre la app en el celular **dos veces**. La primera descarga el service worker
-   nuevo; la segunda ya muestra el cambio. Es así por diseño: la app abre desde el
-   caché para que funcione sin internet.
+3. Abre la app en el celular. Si hay versión nueva, se recarga sola y la muestra.
 
 Ya no hace falta el cable. `celular.cmd` sigue ahí por si quieres probar algo en
 el celular sin publicarlo todavía: redirige el puerto 8000 por USB y el teléfono
