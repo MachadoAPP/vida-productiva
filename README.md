@@ -75,8 +75,17 @@ borras o agregas los que quieras.
 cuántas leíste ese día y cuánto llevas del libro. Cuando lo terminas queda en la
 lista y empiezas otro.
 
-**El calendario del mes**, con los meses anteriores a un toque. Cada día se pinta
-según qué tan completo estuvo. Toca cualquiera para revisarlo o completarlo.
+**El calendario del mes**, con los meses anteriores a un toque. Cada día se llena
+como una batería: la carga sube según el porcentaje y va cambiando de rojo a verde
+a medida que avanzas. Toca cualquiera para revisarlo o completarlo.
+
+**Descargar resumen** te baja una imagen con todo tu historial: el promedio desde
+que empezaste, los días en meta, la mejor racha, cómo vas en cada hábito y en cada
+comida, y el libro. Es un PNG, así que se comparte por WhatsApp como cualquier foto.
+
+No confundas los dos botones: **Descargar copia** baja tus datos en JSON para
+respaldarlos y restaurarlos. **Descargar resumen** baja una imagen para mirar o
+mostrar; no sirve para restaurar nada.
 
 ## Cómo se calcula el porcentaje
 

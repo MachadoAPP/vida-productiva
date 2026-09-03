@@ -4,4 +4,5 @@ Thumbs.db
 .vscode/
 .idea/
 vida-productiva-*.json
+vida-productiva-*.png
 .claude/settings.local.json

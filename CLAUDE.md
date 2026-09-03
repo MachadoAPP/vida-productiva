@@ -183,6 +183,25 @@ El avance en páginas **no** entra en el porcentaje del día. El hábito "Leer" 
 marca por minutos como cualquier otro; la página es aparte, para saber dónde
 quedaste.
 
+## El resumen en imagen
+
+El botón "Descargar resumen" baja un PNG con todo el historial. Dos piezas:
+
+- `resumen()` junta los números. Cuenta **todos los días desde el primero que
+  registraste hasta hoy**, incluidos los que dejaste en blanco: si un día no lo
+  anotaste, no lo cumpliste, y el resumen tiene que decirlo. Por eso muestra
+  aparte "días registrados" — para que el denominador no engañe.
+- `imagenDelResumen()` lo dibuja en un canvas al doble de tamaño y recorta al
+  final a lo que ocupó de verdad, que evita calcular la altura de antemano.
+
+Detalles que cuestan si se olvidan:
+
+- Hay que esperar `document.fonts.ready` antes de dibujar. Si no, el canvas usa
+  la fuente del sistema y la imagen sale con otra tipografía.
+- Es un PNG, no un PDF: las tildes y los acentos van completos. La primera versión
+  fue un PDF hecho a mano y ahí sí había que limitarse a WinAnsi.
+- No se usa ninguna librería. El canvas y `toBlob` bastan.
+
 ## Diseño
 
 El concepto es un **tablero de indicadores industrial**, no un tracker genérico.
@@ -214,10 +233,13 @@ Principios al agregar cosas:
 - La franja de 24 horas es monocroma a propósito: lo registrado en `--tinta`
   sobre `--vacio`. El semáforo es solo para cumplir la meta; si cada actividad
   tuviera color, los verdes y rojos dejarían de querer decir algo.
-- El calendario es un mes real, con la semana empezando el lunes. El color del
-  día sale del mismo semáforo, con el alfa marcando qué tan completo estuvo; el
-  número encima pasa a claro cuando el fondo pesa. Los colores se leen de
-  `:root` con `token()`, no se repiten en el JavaScript.
+- El calendario es un mes real, con la semana empezando el lunes. Cada día se
+  llena como una batería: un `<span class="carga">` que sube desde abajo hasta el
+  porcentaje del día. Los colores se leen de `:root` con `token()`, no se repiten
+  en el JavaScript.
+- `mezclar()` interpola **en HSL, no en RGB**, y esto no es capricho: mezclando
+  ámbar y verde en RGB se pasa por un oliva sucio, mientras que por el tono se
+  pasa por amarillo y lima. Se nota mucho en el manómetro grande del resumen.
 - Filas planas separadas por líneas de un píxel. **No** tarjetas con sombra.
 - Movimiento solo como respuesta a algo que hizo el usuario. Nada de animaciones
   de entrada. Respetar `prefers-reduced-motion`.
@@ -240,14 +262,16 @@ Principios al agregar cosas:
 ## Estado actual
 
 Funciona y está probado: bloques de tiempo, presupuesto del día con horas libres,
-puntaje, racha, calendario por mes, avance de lectura en páginas, edición de
-hábitos, exportar e importar copia de seguridad, y la migración desde el formato
-de pastillas.
+puntaje, racha, calendario por mes con relleno tipo batería, avance de lectura en
+páginas, resumen en imagen, edición de hábitos, exportar e importar copia de
+seguridad, y las migraciones desde los formatos viejos.
 
 Ideas pendientes, sin empezar:
 
 - Ver a qué se van las horas libres a lo largo de la semana, para elegir el rato
   fijo donde meter lo nuevo. Es la continuación natural del presupuesto.
+- Poder compartir el resumen directo con `navigator.share`, en vez de descargarlo
+  y buscarlo en la galería.
 - Recordatorio a una hora fija (requiere permiso de notificaciones y el service
   worker; en iOS solo funciona si la app está instalada).
 - Meta distinta entre semana y fin de semana.

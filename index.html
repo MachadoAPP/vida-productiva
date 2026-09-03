@@ -102,7 +102,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .dias-cabeza{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:6px;}
 .dias-cabeza span{text-align:center;font-size:11px;color:var(--suave);}
 #rejilla{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
-.celda{aspect-ratio:1;border-radius:5px;border:none;padding:0;cursor:pointer;font:inherit;font-size:12px;font-weight:500;color:var(--suave);}
+/* El día se llena como una batería: la carga sube desde abajo y el color pasa de
+   rojo a verde. El cuadro vacío es el fondo. */
+.celda{position:relative;overflow:hidden;aspect-ratio:1;border-radius:5px;border:none;padding:0;cursor:pointer;background:var(--vacio);font:inherit;font-size:12px;font-weight:500;color:var(--tinta);}
+.celda-vacia{color:var(--suave);}
+.carga{position:absolute;left:0;right:0;bottom:0;transition:height .45s ease,background .45s ease;}
+@media (prefers-reduced-motion:reduce){.carga{transition:none;}}
+.num{position:relative;}
 .celda-hoy{font-weight:800;}
 .celda-sel{box-shadow:0 0 0 2px var(--tinta);}
 .hueco{aspect-ratio:1;}
@@ -228,7 +234,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
       <button class="enlace" id="btn-editar">Editar hábitos</button>
       <button class="enlace" id="btn-exportar">Descargar copia</button>
       <button class="enlace" id="btn-importar">Restaurar copia</button>
-      <button class="enlace" id="btn-exportar-datos">Exportar datos</button>
+      <button class="enlace" id="btn-resumen">Descargar resumen</button>
       <input type="file" id="archivo" accept="application/json" class="oculto">
     </div>
     <div id="editor" class="oculto"></div>
@@ -625,6 +631,44 @@ function renderDia(){
 // completo estuvo el día, y el número encima pasa a claro cuando el fondo pesa.
 var hojaRaiz = getComputedStyle(document.documentElement);
 function token(nom){ return hojaRaiz.getPropertyValue("--"+nom).trim(); }
+// Mezcla dos colores. Va por HSL y no por RGB a propósito: mezclando el ámbar y
+// el verde en RGB se pasa por un oliva sucio, mientras que por el tono se pasa
+// por amarillo y lima, que es como uno espera ver subir una carga.
+function aHsl(hex){
+  var r = parseInt(hex.substr(1,2),16)/255, g = parseInt(hex.substr(3,2),16)/255, b = parseInt(hex.substr(5,2),16)/255;
+  var max = Math.max(r,g,b), min = Math.min(r,g,b), l = (max+min)/2, h = 0, sat = 0;
+  if(max !== min){
+    var d = max - min;
+    sat = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    if(max === r) h = (g-b)/d + (g < b ? 6 : 0);
+    else if(max === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  return [h, sat, l];
+}
+function deHsl(h, sat, l){
+  function canal(desp){
+    var k = (desp + h/30) % 12, a = sat * Math.min(l, 1-l);
+    var v = l - a * Math.max(-1, Math.min(k-3, Math.min(9-k, 1)));
+    var x = Math.round(v*255).toString(16);
+    return x.length < 2 ? "0" + x : x;
+  }
+  return "#" + canal(0) + canal(8) + canal(4);
+}
+function mezclar(a, b, t){
+  t = Math.min(1, Math.max(0, t));
+  var x = aHsl(a), y = aHsl(b);
+  return deHsl(x[0] + (y[0]-x[0])*t, x[1] + (y[1]-x[1])*t, x[2] + (y[2]-x[2])*t);
+}
+// Rojo abajo, ámbar a mitad de camino de la meta, verde al llegar.
+function colorProgreso(p, meta){
+  if(p >= meta) return token("verde");
+  var medio = meta / 2;
+  if(p <= medio) return mezclar(token("rojo"), token("ambar"), medio ? p / medio : 0);
+  return mezclar(token("ambar"), token("verde"), (p - medio) / (meta - medio));
+}
+
 function conAlfa(hex, a){
   var v = Math.round(Math.min(1, Math.max(0, a)) * 255).toString(16);
   return hex + (v.length < 2 ? "0"+v : v);
@@ -645,19 +689,12 @@ function renderCalendario(){
     if(k > hoy){ html += '<div class="futura">'+d+'</div>'; continue; }
     var p = porcentajeDia(k);
     if(p>0){ suma += p; n++; }
-    var fondo, letra;
-    if(p === 0){
-      fondo = token("vacio"); letra = token("suave");
-    }else{
-      var base = p>=meta ? token("verde") : (p>=meta/2 ? token("ambar") : token("rojo"));
-      var alfa = 0.35 + p/100*0.65;
-      fondo = conAlfa(base, alfa);
-      letra = alfa >= 0.7 ? token("blanco") : token("tinta");
-    }
-    html += '<button class="celda'+(k===dia?' celda-sel':'')+(k===hoy?' celda-hoy':'')+'"'
-      + ' data-dia="'+k+'" style="background:'+fondo+';color:'+letra+'"'
+    html += '<button class="celda'+(k===dia?' celda-sel':'')+(k===hoy?' celda-hoy':'')+(p===0?' celda-vacia':'')+'"'
+      + ' data-dia="'+k+'"'
       + ' title="'+fechaLarga(k)+' · '+p+'%"'
-      + ' aria-label="'+fechaLarga(k)+', '+p+' por ciento">'+d+'</button>';
+      + ' aria-label="'+fechaLarga(k)+', '+p+' por ciento">'
+      + '<span class="carga" style="height:'+p+'%;background:'+colorProgreso(p, meta)+'"></span>'
+      + '<span class="num">'+d+'</span></button>';
   }
 
   document.getElementById("rejilla").innerHTML = html;
@@ -759,6 +796,262 @@ function copiaValida(d){
   });
 }
 
+
+/* ---------- resumen de todo el historial ---------- */
+// El primer día del que hay algo guardado. De ahí a hoy es "desde que empezaste".
+function primerDia(){
+  var claves = Object.keys(estado.registro).concat(Object.keys(estado.paginas));
+  if(!claves.length) return null;
+  return claves.sort()[0];
+}
+
+function resumen(){
+  var hoy = claveFecha(new Date());
+  var desde = primerDia();
+  if(!desde) return null;
+
+  // Todos los días desde que empezaste, incluidos los que no registraste: si un
+  // día no lo anotaste, no lo cumpliste, y el resumen tiene que decirlo.
+  var dias = [], cursor = desdeClave(desde), fin = desdeClave(hoy);
+  while(cursor <= fin){ dias.push(claveFecha(cursor)); cursor = sumarDias(cursor, 1); }
+
+  var conRegistro = 0, enMeta = 0, sumaPct = 0, mejorRacha = 0, rachaActual = 0;
+  dias.forEach(function(k){
+    var p = porcentajeDia(k);
+    sumaPct += p;
+    if(estado.registro[k] && Object.keys(estado.registro[k]).length) conRegistro++;
+    if(p >= estado.meta){
+      enMeta++; rachaActual++;
+      if(rachaActual > mejorRacha) mejorRacha = rachaActual;
+    }else rachaActual = 0;
+  });
+
+  var habitos = estado.habitos.map(function(h){
+    var ganados = 0, minutos = 0, posibles = (Number(h.puntos) || 0) * dias.length;
+    var porParte = (h.partes || []).map(function(){ return 0; });
+    dias.forEach(function(k){
+      var v = (estado.registro[k] || {})[h.id];
+      ganados += puntosGanados(h, v);
+      if(h.tipo === "tiempo") minutos += minutosDe(v);
+      if(h.tipo === "partes" && Array.isArray(v)){
+        v.forEach(function(i){ if(porParte[i] != null) porParte[i]++; });
+      }
+    });
+    return {
+      nombre: h.nombre,
+      tipo: h.tipo,
+      pct: posibles ? Math.round(ganados / posibles * 100) : 0,
+      minutos: minutos,
+      partes: (h.partes || []).map(function(p, i){
+        return {nombre: p, pct: Math.round(porParte[i] / dias.length * 100), veces: porParte[i]};
+      })
+    };
+  });
+
+  return {
+    desde: desde, hasta: hoy, dias: dias.length,
+    conRegistro: conRegistro, enMeta: enMeta, mejorRacha: mejorRacha,
+    promedio: Math.round(sumaPct / dias.length),
+    meta: estado.meta,
+    habitos: habitos,
+    libro: estado.libro ? {
+      titulo: estado.libro.titulo,
+      paginas: Number(estado.libro.paginas) || 0,
+      actual: paginaEn(hoy)
+    } : null,
+    terminados: (estado.libros || []).map(function(x){ return x.titulo; })
+  };
+}
+
+/* ---------- la imagen del resumen ---------- */
+// Un PNG para mirar o mostrarle a alguien. Se dibuja al doble de tamaño para que
+// se vea nítido en pantalla de teléfono, y se recorta a lo que ocupó de verdad.
+function imagenDelResumen(r, listo){
+  var E = 2, A = 620, M = 44, ANCHO = A - M*2;
+  var lienzo = document.createElement("canvas");
+  lienzo.width = A * E;
+  lienzo.height = 2600 * E;
+  var c = lienzo.getContext("2d");
+  c.scale(E, E);
+  c.fillStyle = token("papel");
+  c.fillRect(0, 0, A, 2600);
+
+  var TITULO = '"Bricolage Grotesque", Inter, system-ui, sans-serif';
+  var CUERPO = 'Inter, system-ui, sans-serif';
+  var y = 0;
+
+  function fuente(tam, peso, familia){ c.font = (peso || 400) + " " + tam + "px " + (familia || CUERPO); }
+  function txt(t, x, tam, peso, color, familia){
+    fuente(tam, peso, familia);
+    c.fillStyle = color || token("tinta");
+    c.fillText(t, x, y);
+  }
+  function txtDer(t, xDer, tam, peso, color, familia){
+    fuente(tam, peso, familia);
+    c.fillStyle = color || token("tinta");
+    c.fillText(t, xDer - c.measureText(t).width, y);
+  }
+  function caja(x, arriba, ancho, alto, radio, color){
+    c.fillStyle = color;
+    c.beginPath();
+    if(c.roundRect) c.roundRect(x, arriba, ancho, alto, radio);
+    else c.rect(x, arriba, ancho, alto);
+    c.fill();
+  }
+  function barra(x, arriba, ancho, alto, pct, color){
+    caja(x, arriba, ancho, alto, alto/2, token("vacio"));
+    if(pct > 0) caja(x, arriba, Math.max(alto, ancho * Math.min(100, pct) / 100), alto, alto/2, color);
+  }
+  function linea(arriba){
+    c.fillStyle = token("linea");
+    c.fillRect(M, arriba, ANCHO, 1);
+  }
+  function tono(p){ return colorProgreso(p, r.meta); }
+
+  // El manómetro, que es lo que hace reconocible a la app.
+  function manometro(cx, cy, radio, pct){
+    c.lineCap = "round";
+    c.lineWidth = 13;
+    c.strokeStyle = token("linea");
+    c.beginPath(); c.arc(cx, cy, radio, Math.PI, 2*Math.PI); c.stroke();
+    if(pct > 0){
+      c.strokeStyle = tono(pct);
+      c.beginPath(); c.arc(cx, cy, radio, Math.PI, Math.PI + Math.min(100, pct)/100 * Math.PI); c.stroke();
+    }
+    var ang = Math.PI + Math.min(100, pct)/100 * Math.PI;
+    c.strokeStyle = token("tinta"); c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(cx, cy);
+    c.lineTo(cx + Math.cos(ang)*(radio-24), cy + Math.sin(ang)*(radio-24));
+    c.stroke();
+    c.fillStyle = token("papel");
+    c.beginPath(); c.arc(cx, cy, 8, 0, 2*Math.PI); c.fill();
+    c.lineWidth = 4; c.strokeStyle = token("tinta"); c.stroke();
+  }
+
+  /* --- encabezado --- */
+  y = M + 26;
+  txt("Vida productiva", M, 30, 800, token("tinta"), TITULO);
+  y += 22;
+  txt("Del " + fechaLarga(r.desde) + " al " + fechaLarga(r.hasta), M, 13, 400, token("suave"));
+
+  /* --- manómetro y cifra --- */
+  y += 30;
+  var eje = y + 112;
+  manometro(A/2, eje, 104, r.promedio);
+  y = eje + 62;   // debajo del eje, para no pisar la aguja
+  fuente(58, 800, TITULO);
+  var cifra = r.promedio + "%";
+  c.fillStyle = tono(r.promedio);
+  c.fillText(cifra, A/2 - c.measureText(cifra).width/2, y);
+  y += 24;
+  fuente(13, 400, CUERPO);
+  var pie = "promedio de vida productiva  ·  meta " + r.meta + "%";
+  c.fillStyle = token("suave");
+  c.fillText(pie, A/2 - c.measureText(pie).width/2, y);
+
+  /* --- tres cifras --- */
+  y += 40;
+  var celda = ANCHO / 3;
+  [["Días registrados", r.conRegistro + "/" + r.dias],
+   ["Días en meta", String(r.enMeta)],
+   ["Mejor racha", r.mejorRacha + (r.mejorRacha === 1 ? " día" : " días")]
+  ].forEach(function(par, i){
+    var x = M + celda*i;
+    caja(x, y - 16, celda - 10, 62, 10, token("blanco"));
+    var guardar = y;
+    y += 6;
+    txt(par[0], x + 14, 11, 400, token("suave"));
+    y += 26;
+    txt(par[1], x + 14, 21, 700, token("tinta"), TITULO);
+    y = guardar;
+  });
+  y += 62;
+
+  /* --- los últimos treinta días --- */
+  y += 30;
+  txt("Últimos 30 días", M, 15, 700, token("tinta"), TITULO);
+  y += 14;
+  var hueco = 3, lado = (ANCHO - hueco*29) / 30, altoTira = 44;
+  for(var i = 29; i >= 0; i--){
+    var k = claveFecha(sumarDias(desdeClave(r.hasta), -i));
+    var p = porcentajeDia(k);
+    var x = M + (29 - i) * (lado + hueco);
+    caja(x, y, lado, altoTira, 3, token("linea"));
+    if(p > 0){
+      var alto = Math.max(3, altoTira * p / 100);
+      caja(x, y + altoTira - alto, lado, alto, 3, tono(p));
+    }
+  }
+  y += altoTira;
+
+  /* --- hábitos --- */
+  y += 42;
+  txt("Hábitos", M, 15, 700, token("tinta"), TITULO);
+  y += 12;
+  linea(y);
+
+  r.habitos.forEach(function(h){
+    y += 26;
+    txt(h.nombre, M, 14, 600);
+    txtDer(h.pct + "%", A - M, 14, 700, tono(h.pct), TITULO);
+    if(h.tipo === "tiempo" && h.minutos){
+      txtDer(duracion(h.minutos), A - M - 56, 11, 400, token("suave"));
+    }
+    y += 9;
+    barra(M, y, ANCHO, 6, h.pct, tono(h.pct));
+    y += 6;
+    h.partes.forEach(function(p){
+      y += 19;
+      txt(p.nombre, M + 16, 12, 400, token("suave"));
+      txtDer(p.pct + "%", A - M, 12, 600, token("suave"));
+      txtDer(p.veces + " de " + r.dias, A - M - 46, 11, 400, token("suave"));
+      y += 7;
+      barra(M + 16, y, ANCHO - 16, 4, p.pct, tono(p.pct));
+      y += 4;
+    });
+    y += 10;
+  });
+
+  /* --- lectura --- */
+  if(r.libro || r.terminados.length){
+    y += 28;
+    txt("Lectura", M, 15, 700, token("tinta"), TITULO);
+    y += 12;
+    linea(y);
+    if(r.libro){
+      y += 26;
+      txt(r.libro.titulo, M, 14, 600);
+      var pl = r.libro.paginas ? Math.round(r.libro.actual / r.libro.paginas * 100) : 0;
+      txtDer(pl + "%", A - M, 14, 700, token("tinta"), TITULO);
+      y += 18;
+      txt("página " + r.libro.actual + (r.libro.paginas ? " de " + r.libro.paginas : ""), M, 12, 400, token("suave"));
+      y += 8;
+      barra(M, y, ANCHO, 5, pl, token("tinta"));
+      y += 5;
+    }
+    if(r.terminados.length){
+      y += 22;
+      txt("Terminados: " + r.terminados.join(", "), M, 12, 400, token("suave"));
+    }
+  }
+
+  /* --- pie --- */
+  y += 40;
+  txt("Vida productiva  ·  tus datos no salen del teléfono", M, 11, 400, token("suave"));
+
+  /* --- recortar a lo que se usó --- */
+  var alto = Math.ceil(y + M);
+  var final = document.createElement("canvas");
+  final.width = A * E;
+  final.height = alto * E;
+  var c2 = final.getContext("2d");
+  c2.fillStyle = token("papel");
+  c2.fillRect(0, 0, final.width, final.height);
+  c2.drawImage(lienzo, 0, 0);
+  final.toBlob(listo, "image/png");
+}
+
 /* ---------- eventos ---------- */
 document.getElementById("lista").addEventListener("click", function(ev){
   var nuevo = ev.target.closest("[data-nuevo]");
@@ -806,7 +1099,7 @@ document.getElementById("lista").addEventListener("change", function(ev){
 });
 
 document.getElementById("rejilla").addEventListener("click", function(ev){
-  var b = ev.target.closest("button[data-dia]");
+  var b = ev.target.closest("button[data-dia]");   // el clic puede caer en la carga o el número
   if(!b) return;
   dia = b.getAttribute("data-dia");
   diaManual = (dia !== claveFecha(new Date()));
@@ -927,6 +1220,24 @@ document.getElementById("editor").addEventListener("click", function(ev){
     estado.habitos.push({id:"h"+Date.now(), icono:"⭐", nombre:"Nuevo hábito", tipo:"check", puntos:15, minimo:15, objetivo:30});
     guardar(); render();
   }
+});
+
+document.getElementById("btn-resumen").addEventListener("click", function(){
+  var r = resumen();
+  if(!r){ alert("Todavía no hay nada que resumir. Marca algo primero."); return; }
+  function dibujar(){
+    imagenDelResumen(r, function(blob){
+      if(!blob){ alert("No se pudo generar la imagen."); return; }
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "vida-productiva-" + claveFecha(new Date()) + ".png";
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    });
+  }
+  // Esperar las tipografías: si no, el canvas dibuja con la fuente del sistema.
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(dibujar, dibujar);
+  else dibujar();
 });
 
 document.getElementById("btn-exportar").addEventListener("click", function(){
