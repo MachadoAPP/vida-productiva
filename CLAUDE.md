@@ -175,9 +175,13 @@ Dos reglas que no son obvias:
 - `paginaPrevia()` solo mira días desde `libro.desde`. Al cambiar de libro la
   numeración vuelve a empezar en uno, y sin ese corte el libro nuevo heredaría la
   página del viejo.
-- Al empezar un libro distinto se borran las páginas anotadas de ese día en
-  adelante, porque son del anterior. Terminar un libro y empezar otro el mismo
-  día es el caso que rompía esto.
+- Corregir el título **no** es lo mismo que cambiar de libro, y por eso son dos
+  botones. "Guardar" solo reescribe título y total; "empezar otro libro distinto"
+  reinicia `desde` y borra las páginas de hoy en adelante, que son del anterior.
+  Antes bastaba con arreglar una errata para perder el avance.
+- Los terminados en `estado.libros` se pueden renombrar y quitar desde el mismo
+  formulario. Fuera de él solo se muestra el conteo: la lista completa crecería
+  sin control.
 
 El avance en páginas **no** entra en el porcentaje del día. El hábito "Leer" se
 marca por minutos como cualquier otro; la página es aparte, para saber dónde
@@ -257,6 +261,10 @@ Principios al agregar cosas:
   `renderLectura()` solo cambia valores. El campo de la página no se toca si lo
   tienes enfocado, porque `render()` corre en cada clic y te borraría lo escrito.
 - Todo lo que venga del usuario pasa por `escapar()` antes de entrar a `innerHTML`.
+- Los archivos salen por `entregar()`, que intenta `navigator.share` y si no cae
+  a la descarga. **Tiene que ser síncrono desde el clic**: por eso la imagen usa
+  `toDataURL` y no `toBlob`, y solo se espera a `document.fonts` si de verdad
+  hace falta. Safari invalida el permiso de compartir si hay esperas de por medio.
 - Después de tocar `estado`, llamar `guardar()` y luego `render()`.
 
 ## Estado actual
@@ -270,8 +278,6 @@ Ideas pendientes, sin empezar:
 
 - Ver a qué se van las horas libres a lo largo de la semana, para elegir el rato
   fijo donde meter lo nuevo. Es la continuación natural del presupuesto.
-- Poder compartir el resumen directo con `navigator.share`, en vez de descargarlo
-  y buscarlo en la galería.
 - Recordatorio a una hora fija (requiere permiso de notificaciones y el service
   worker; en iOS solo funciona si la app está instalada).
 - Meta distinta entre semana y fin de semana.

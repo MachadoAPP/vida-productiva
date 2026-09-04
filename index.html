@@ -206,6 +206,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
         <input type="number" id="libro-pag" class="corto" min="1" placeholder="páginas" aria-label="Total de páginas">
         <button class="anadir" id="btn-empezar">Empezar</button>
       </div>
+      <button class="enlace oculto" id="btn-otro">empezar otro libro distinto</button>
+      <div id="libro-terminados"></div>
     </div>
     <p class="nota" id="libro-listos"></p>
   </section>
@@ -277,6 +279,7 @@ var dia = claveFecha(new Date());
 var mesVisible = primeroDeMes(new Date());
 var editando = false;
 var editandoLibro = false;   // formulario para empezar o corregir el libro
+var libroNuevo = false;      // dentro del formulario: empezar otro, no corregir este
 var diaManual = false;   // true cuando eliges un día del calendario a mano
 var mostrado = 0;
 var anim = null;
@@ -729,9 +732,30 @@ function renderLectura(){
   document.getElementById("libro-cuerpo").classList.toggle("oculto", !hay);
 
   var listos = estado.libros || [];
+  // Solo el conteo: los títulos están en el formulario, donde además se editan,
+  // y una lista larga aquí acabaría ocupando media pantalla.
   document.getElementById("libro-listos").textContent = listos.length
-    ? "Terminados: " + listos.map(function(x){ return x.titulo; }).join(", ")
+    ? listos.length + (listos.length === 1 ? " libro terminado" : " libros terminados")
     : "";
+
+  // Corregir el título de este libro no es lo mismo que empezar otro: lo primero
+  // conserva el avance y lo segundo lo reinicia, así que son botones distintos.
+  var corrigiendo = hay && !libroNuevo;
+  document.getElementById("btn-empezar").textContent = corrigiendo ? "Guardar" : "Empezar";
+  document.getElementById("btn-otro").classList.toggle("oculto", !corrigiendo);
+
+  // No rearmar la lista mientras escribes en ella, que borraría lo tecleado.
+  var caja = document.getElementById("libro-terminados");
+  if(!caja.contains(document.activeElement)){
+    caja.innerHTML = listos.length
+      ? '<p class="nota">Libros terminados</p>' + listos.map(function(x, i){
+          return '<div class="edit-fila">'
+            + '<input type="text" class="nom" data-libro="'+i+'" value="'+escapar(x.titulo)+'" aria-label="Título del libro terminado">'
+            + '<button class="borrar" data-quitar-libro="'+i+'" aria-label="Quitar de la lista">×</button>'
+            + '</div>';
+        }).join("")
+      : "";
+  }
 
   // Sin libro el formulario es lo único que hay; con libro, solo si lo pediste.
   document.getElementById("libro-form").classList.toggle("oculto", hay && !editandoLibro);
@@ -866,7 +890,7 @@ function resumen(){
 /* ---------- la imagen del resumen ---------- */
 // Un PNG para mirar o mostrarle a alguien. Se dibuja al doble de tamaño para que
 // se vea nítido en pantalla de teléfono, y se recorta a lo que ocupó de verdad.
-function imagenDelResumen(r, listo){
+function imagenDelResumen(r){
   var E = 2, A = 620, M = 44, ANCHO = A - M*2;
   var lienzo = document.createElement("canvas");
   lienzo.width = A * E;
@@ -1049,7 +1073,46 @@ function imagenDelResumen(r, listo){
   c2.fillStyle = token("papel");
   c2.fillRect(0, 0, final.width, final.height);
   c2.drawImage(lienzo, 0, 0);
-  final.toBlob(listo, "image/png");
+  return blobDeCanvas(final);
+}
+
+// toDataURL es síncrono, a diferencia de toBlob. Eso conserva el permiso que da
+// el toque del usuario, que es lo que Safari exige para abrir el menú compartir.
+function blobDeCanvas(lienzo){
+  var datos = lienzo.toDataURL("image/png");
+  var base64 = datos.slice(datos.indexOf(",") + 1);
+  var texto = atob(base64);
+  var bytes = new Uint8Array(texto.length);
+  for(var i = 0; i < texto.length; i++) bytes[i] = texto.charCodeAt(i);
+  return new Blob([bytes], {type: "image/png"});
+}
+
+/* ---------- entregar un archivo ---------- */
+// En iPhone la descarga directa no es de fiar, sobre todo con la app instalada:
+// puede abrir el archivo en vez de guardarlo. El menú de compartir del sistema sí
+// funciona, y en Android además evita tener que ir a buscarlo a la galería.
+function descargar(blob, nombre){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+}
+
+function entregar(blob, nombre, titulo){
+  var archivo = null;
+  try{ archivo = new File([blob], nombre, {type: blob.type}); }catch(e){}
+  if(archivo && navigator.share && navigator.canShare && navigator.canShare({files:[archivo]})){
+    navigator.share({files: [archivo], title: titulo}).catch(function(err){
+      // Si el usuario cancela no hay nada que hacer; si falló de verdad, se baja.
+      if(err && err.name === "AbortError") return;
+      descargar(blob, nombre);
+    });
+  }else{
+    descargar(blob, nombre);
+  }
 }
 
 /* ---------- eventos ---------- */
@@ -1136,6 +1199,7 @@ document.getElementById("pagina").addEventListener("change", function(){
 
 document.getElementById("btn-libro").addEventListener("click", function(){
   editandoLibro = !editandoLibro;
+  libroNuevo = false;
   if(editandoLibro && estado.libro){
     document.getElementById("libro-nom").value = estado.libro.titulo;
     document.getElementById("libro-pag").value = estado.libro.paginas || "";
@@ -1148,17 +1212,53 @@ document.getElementById("btn-empezar").addEventListener("click", function(){
   var titulo = document.getElementById("libro-nom").value.trim();
   var pags = parseInt(document.getElementById("libro-pag").value, 10);
   if(!titulo){ document.getElementById("libro-nom").focus(); return; }
-  // Corregir el título o el total del mismo libro no reinicia el avance.
-  var mismo = estado.libro && estado.libro.titulo === titulo;
-  var desde = mismo ? estado.libro.desde : claveFecha(new Date());
-  // Con un libro nuevo la numeración vuelve a empezar, así que las páginas
-  // anotadas de hoy en adelante son del libro anterior y ya no aplican.
-  if(!mismo){
+
+  if(estado.libro && !libroNuevo){
+    // Solo se corrige lo escrito: el avance y el día de inicio no se tocan, para
+    // que arreglar una errata en el título no borre las páginas que llevas.
+    estado.libro.titulo = titulo;
+    estado.libro.paginas = pags > 0 ? pags : 0;
+  }else{
+    // Libro distinto: la numeración vuelve a empezar, así que las páginas de hoy
+    // en adelante son del anterior y ya no aplican.
+    var desde = claveFecha(new Date());
     for(var k in estado.paginas){ if(k >= desde) delete estado.paginas[k]; }
+    estado.libro = {titulo: titulo, paginas: pags > 0 ? pags : 0, desde: desde};
   }
-  estado.libro = {titulo: titulo, paginas: pags > 0 ? pags : 0, desde: desde};
+
   editandoLibro = false;
+  libroNuevo = false;
   document.getElementById("btn-libro").textContent = "cambiar";
+  guardar(); render();
+});
+
+document.getElementById("btn-otro").addEventListener("click", function(){
+  libroNuevo = true;
+  document.getElementById("libro-nom").value = "";
+  document.getElementById("libro-pag").value = "";
+  render();
+  document.getElementById("libro-nom").focus();
+});
+
+// Los terminados se pueden corregir y quitar: si copiaste mal un título, no toca
+// dejarlo así para siempre.
+document.getElementById("libro-terminados").addEventListener("change", function(ev){
+  var campo = ev.target.closest("input[data-libro]");
+  if(!campo) return;
+  var i = Number(campo.getAttribute("data-libro"));
+  var t = campo.value.trim();
+  if(!estado.libros || !estado.libros[i]) return;
+  if(t) estado.libros[i].titulo = t;
+  guardar(); render();
+});
+
+document.getElementById("libro-terminados").addEventListener("click", function(ev){
+  var b = ev.target.closest("[data-quitar-libro]");
+  if(!b) return;
+  var i = Number(b.getAttribute("data-quitar-libro"));
+  if(!estado.libros || !estado.libros[i]) return;
+  if(!confirm("¿Quitar \"" + estado.libros[i].titulo + "\" de la lista?")) return;
+  estado.libros.splice(i, 1);
   guardar(); render();
 });
 
@@ -1169,6 +1269,7 @@ document.getElementById("btn-terminar").addEventListener("click", function(){
   estado.libros.push({titulo:l.titulo, paginas:l.paginas, desde:l.desde, hasta:dia});
   estado.libro = null;
   editandoLibro = false;
+  libroNuevo = false;
   document.getElementById("btn-libro").textContent = "cambiar";
   document.getElementById("libro-nom").value = "";
   document.getElementById("libro-pag").value = "";
@@ -1226,27 +1327,17 @@ document.getElementById("btn-resumen").addEventListener("click", function(){
   var r = resumen();
   if(!r){ alert("Todavía no hay nada que resumir. Marca algo primero."); return; }
   function dibujar(){
-    imagenDelResumen(r, function(blob){
-      if(!blob){ alert("No se pudo generar la imagen."); return; }
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "vida-productiva-" + claveFecha(new Date()) + ".png";
-      a.click();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
-    });
+    entregar(imagenDelResumen(r), "vida-productiva-" + claveFecha(new Date()) + ".png", "Mi vida productiva");
   }
-  // Esperar las tipografías: si no, el canvas dibuja con la fuente del sistema.
-  if(document.fonts && document.fonts.ready) document.fonts.ready.then(dibujar, dibujar);
+  // Las tipografías casi siempre ya están listas; solo se espera si hace falta,
+  // porque esperar de más rompe el permiso que Safari necesita para compartir.
+  if(document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(dibujar, dibujar);
   else dibujar();
 });
 
 document.getElementById("btn-exportar").addEventListener("click", function(){
   var blob = new Blob([JSON.stringify(estado,null,2)], {type:"application/json"});
-  var a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "vida-productiva-" + claveFecha(new Date()) + ".json";
-  a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  entregar(blob, "vida-productiva-" + claveFecha(new Date()) + ".json", "Copia de Vida productiva");
 });
 
 document.getElementById("btn-importar").addEventListener("click", function(){

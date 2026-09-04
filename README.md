@@ -31,7 +31,10 @@ blanco, con sus propios datos.
 
 Para instalarla en otro teléfono: abre la URL en Chrome → menú → Instalar y crear
 acceso directo → **Instalar** (no "Crear acceso directo", que solo abre Chrome).
-En iPhone es Safari → compartir → Añadir a pantalla de inicio.
+En iPhone es Safari → compartir → Añadir a pantalla de inicio; Chrome en iPhone
+no instala aplicaciones. Ojo: Safari borra los datos de sitios que no visitas en
+siete días, y esa regla no aplica a las apps ya instaladas en la pantalla de
+inicio — pero en iPhone conviene bajar copia más seguido de todos modos.
 
 ### Actualizarla después de un cambio
 
@@ -75,11 +78,17 @@ borras o agregas los que quieras.
 cuántas leíste ese día y cuánto llevas del libro. Cuando lo terminas queda en la
 lista y empiezas otro.
 
+En **cambiar** puedes corregir el título sin perder el avance, o empezar uno
+distinto —que sí reinicia las páginas—. Ahí mismo está la lista de los que ya
+terminaste, donde puedes arreglar un nombre mal escrito o quitar uno.
+
 **El calendario del mes**, con los meses anteriores a un toque. Cada día se llena
 como una batería: la carga sube según el porcentaje y va cambiando de rojo a verde
 a medida que avanzas. Toca cualquiera para revisarlo o completarlo.
 
-**Descargar resumen** te baja una imagen con todo tu historial: el promedio desde
+**Descargar resumen** abre el menú de compartir con una imagen de todo tu
+historial, para mandarla por WhatsApp o guardarla. Si el teléfono no soporta
+compartir archivos, la descarga. Trae: el promedio desde
 que empezaste, los días en meta, la mejor racha, cómo vas en cada hábito y en cada
 comida, y el libro. Es un PNG, así que se comparte por WhatsApp como cualquier foto.
 

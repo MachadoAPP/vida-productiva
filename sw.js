@@ -1,5 +1,5 @@
 /* Guarda la app en el teléfono para que abra sin internet. */
-const CACHE = "vida-productiva-v12";
+const CACHE = "vida-productiva-v13";
 const BASE = [
   "./",
   "./index.html",
